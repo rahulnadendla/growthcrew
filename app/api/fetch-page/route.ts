@@ -50,8 +50,14 @@ async function assertPublicUrl(raw: string): Promise<URL> {
   return url;
 }
 
+function decode(s: string) {
+  return s
+    .replace(/&nbsp;/g, " ").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#8377;|&#x20b9;/gi, "₹").replace(/&amp;/g, "&");
+}
+
 function htmlToText(html: string): { title: string; text: string } {
-  const title = (html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "").trim();
+  const title = decode((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "").trim());
   const desc =
     html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["']/i)?.[1] ||
     html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']*)["']/i)?.[1] ||

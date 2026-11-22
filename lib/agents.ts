@@ -137,15 +137,19 @@ Return JSON: {"fixed": [{"angle_id": string, "language": "english"|"hindi"|"telu
     agent: "channel",
     maxTokens: 2000,
     system: `${BASE}
-You are the Channel Lead for an Indian startup. For each of the 3 test cells, choose where to run the ad and how. Channels to choose from: "Instagram Reels", "Instagram Feed", "YouTube Shorts", "Facebook Feed", "Click-to-WhatsApp ad". Split the 7-day test budget across the 3 cells (roughly equal, so the test is fair).
+You are the Channel Lead for an Indian startup. For each of the 3 test cells, choose where to run the ad and how. Channels to choose from: "Instagram Reels", "Instagram Feed", "YouTube Shorts", "Facebook Feed", "Click-to-WhatsApp ad". Split the 7-day test budget across the 3 cells roughly equally, so the test is fair: daily_budget_inr per cell ≈ test_budget_7_days_inr ÷ 7 ÷ 3. Example: ₹7,000 for 7 days → about ₹333 per cell per day.
 Return JSON:
 {"plan": [{"cell_id": "T1"|"T2"|"T3", "channel": string, "format": string (e.g. 15-second vertical video with text overlay), "targeting": string (specific: location, age, interests), "daily_budget_inr": number, "why": string (1 sentence)}] (exactly 3), "schedule_note": string (1 sentence: when ads run, e.g. evenings)}`,
-    validate: (o) => {
+    validate: (o, input) => {
       if (!Array.isArray(o.plan) || o.plan.length !== 3) return ["plan must have exactly 3 items"];
       const p: string[] = [];
       o.plan.forEach((c: any, i: number) => {
         if (typeof c.daily_budget_inr !== "number" || c.daily_budget_inr <= 0) p.push(`plan ${i + 1}: daily_budget_inr must be a positive number`);
       });
+      const week = Number(input?.test_budget_7_days_inr) || 0;
+      const total = o.plan.reduce((s: number, c: any) => s + (Number(c.daily_budget_inr) || 0) * 7, 0);
+      if (week && Math.abs(total - week) > week * 0.3)
+        p.push(`daily budgets add up to ₹${Math.round(total)} for 7 days, but the test budget is ₹${week}. Each cell should get about ₹${Math.round(week / 21)} per day.`);
       return p;
     },
   },

@@ -37,8 +37,9 @@ export function simulateRound(
       const spend = Math.round(c.daily_budget_inr * (0.88 + rand() * 0.24));
       const impressions = Math.round((spend / cpm) * 1000);
       const ctr = baseCtr * (0.75 + rand() * 0.5) * (d === 1 ? 0.8 : 1); // day 1 = learning phase
-      const clicks = Math.max(0, Math.round(impressions * ctr));
-      const signups = Math.max(0, Math.round(clicks * baseConv * (0.6 + rand() * 0.8)));
+      const sround = (x: number) => Math.floor(x) + (rand() < x - Math.floor(x) ? 1 : 0);
+      const clicks = Math.max(0, sround(impressions * ctr));
+      const signups = Math.max(0, sround(clicks * baseConv * (0.6 + rand() * 0.8)));
       days.push({ day: d, spend, impressions, clicks, signups });
     }
     return { cell_id: c.cell_id, label: c.label, days };

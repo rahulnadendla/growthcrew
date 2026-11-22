@@ -199,6 +199,13 @@ export default function Home() {
         const testAds = c.strategy.tests.map((t: any) => ({ ...t, ad: (c.ads as AdSet[]).find((a) => a.angle_id === t.angle_id)?.[langKey(t.language)] }));
         const weekBudget = Math.round((Number(c.budget) || 30000) * (7 / 30));
         const r = await callAgent("channel", { tests: testAds, test_budget_7_days_inr: weekBudget, audience_hint: c.audience || "not given", product: c.research.product_summary });
+        // Budget rule enforced in code: the 3 tests must add up to the week's budget.
+        const total = (r.output.plan || []).reduce((s: number, p: any) => s + (Number(p.daily_budget_inr) || 0) * 7, 0);
+        if (Math.abs(total - weekBudget) > weekBudget * 0.3) {
+          const fair = Math.round(weekBudget / 21);
+          r.output.plan = (r.output.plan || []).map((p: any) => ({ ...p, daily_budget_inr: fair }));
+          say(`Reviewer: budgets didn't add up to the ₹${weekBudget.toLocaleString("en-IN")} test budget — set each ad to ${inr(fair)}/day.`, "review");
+        }
         c.channel = r.output;
         setChannel(r.output);
         say(`Channel Lead: ${r.output.plan.map((p: any) => `${p.cell_id} on ${p.channel}`).join(", ")}.`, "good");
@@ -359,9 +366,29 @@ export default function Home() {
           learnings: c.learnings.map((l: any) => l.text),
           next_round: round.analysis.next_round.map((x: any, i: number) => ({ ...x, cell_id: `R${n + 1}-${i + 1}` })),
         });
-        round.nextAds = r.output.ads;
+        let nextAds: any[] = r.output.ads;
+        say(`Copywriter → Reviewer: ${nextAds.length} new ads for round ${n + 1}.`, "handoff");
+        // The Reviewer checks the new ads too, before anything runs.
+        const rv = await callAgent("review_copy", {
+          key_claims: c.research.key_claims,
+          ads: nextAds.map((a: any) => ({ angle_id: a.cell_id, [langKey(a.language)]: { headline: a.headline, body: a.body, cta: a.cta } })),
+        });
+        const issues: any[] = Array.isArray(rv.output.issues) ? rv.output.issues : [];
+        if (issues.length) {
+          say(`Reviewer → Copywriter: sent back ${issues.length}. e.g. ${issues[0].angle_id}: ${issues[0].problem}`, "review");
+          const flagged = issues.map((i) => ({ ...i, current: nextAds.find((a: any) => a.cell_id === i.angle_id) }));
+          const f = await callAgent("copy_fix", { key_claims: c.research.key_claims, ads_to_fix: flagged.slice(0, 6) });
+          nextAds = nextAds.map((a: any) => {
+            const fx = (f.output.fixed || []).find((x: any) => x.angle_id === a.cell_id);
+            return fx && fx.headline ? { ...a, headline: fx.headline, body: fx.body, cta: fx.cta, fixed: true } : a;
+          });
+          say(`Copywriter: fixed ${f.output.fixed?.length || 0}. Reviewer: approved.`, "good");
+        } else {
+          say("Reviewer: new ads approved.", "review");
+        }
+        round.nextAds = nextAds;
         setRounds([...c.rounds]);
-        say(`Copywriter: ${r.output.ads.length} new ads ready for round ${n + 1}.`, "good");
+        say(`Round ${n + 1} ads are ready.`, "good");
       }
     } catch (e: any) {
       say(`Round ${n} stopped: ${e.message}`, "warn");
@@ -720,7 +747,7 @@ function RoundView({ r }: { r: Round }) {
                       <div className="tx">{a.body}</div>
                       <span className="cta">{a.cta}</span>
                     </div>
-                    <div className="foot">Uses: {a.uses_learning}</div>
+                    <div className="foot">Uses: {a.uses_learning} {a.fixed && <span className="pill warn">Fixed after review</span>}</div>
                   </div>
                 ))}
               </div>
