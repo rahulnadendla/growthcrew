@@ -102,7 +102,7 @@ export async function POST(req: Request) {
       output = extractJson(result.text);
       problems = step.validate ? step.validate(output, body.input) : [];
     } catch {
-      problems = ["Your reply was not valid JSON."];
+      problems = ["Your reply was not valid JSON (it may have been too long and got cut off). Reply again with complete, valid JSON and keep every text field short."];
     }
 
     // Enforce the rules in code: if anything is off, ask once more with the exact problems.

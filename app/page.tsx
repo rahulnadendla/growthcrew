@@ -266,6 +266,8 @@ export default function Home() {
     setStatus({ head: "idle", researcher: "idle", copywriter: "idle", channel: "idle", reviewer: "idle" });
     setResearch(null); setResearchMeta(null); setReviewResearch(null); setStrategy(null); setAds(null);
     setReviewCopy(null); setChannel(null); setSignoff(null); setRounds([]); setLearnings([]); setPage(null);
+    prevReady.current = 0;
+    setTab("research");
     say("Head of Growth: new client. Team, let's go.", "good");
     runFrom(0);
   }
@@ -397,6 +399,29 @@ export default function Home() {
     setBusy(false);
   }
 
+  // ---------- Tabs (layout only) ----------
+  type TabId = "research" | "strategy" | "ads" | "plan" | "results";
+  const TABS: { id: TabId; label: string; icon: string; ready: boolean; agent: AgentId }[] = [
+    { id: "research", label: "Research", icon: "🔎", ready: !!research, agent: "researcher" },
+    { id: "strategy", label: "Strategy", icon: "🧭", ready: !!strategy, agent: "head" },
+    { id: "ads", label: "Ads", icon: "✍️", ready: !!ads, agent: "copywriter" },
+    { id: "plan", label: "Channels & plan", icon: "📣", ready: !!channel, agent: "channel" },
+    { id: "results", label: "Results & learnings", icon: "📈", ready: rounds.length > 0, agent: "head" },
+  ];
+  const [tab, setTab] = useState<TabId>("research");
+  const readyCount = TABS.filter((t) => t.ready).length;
+  const prevReady = useRef(0);
+  useEffect(() => {
+    // When a new section becomes ready, jump to it so viewers follow the team live.
+    if (readyCount > prevReady.current) {
+      const newest = [...TABS].reverse().find((t) => t.ready);
+      if (newest) setTab(newest.id);
+    }
+    prevReady.current = readyCount;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readyCount]);
+  const nextTabWorking = TABS.find((t) => !t.ready);
+
   const lastRound = rounds[rounds.length - 1];
   const canLaunch = !!signoff && rounds.length === 0 && !busy;
   const canNext = !!lastRound?.nextAds && rounds.length < 3 && !busy;
@@ -478,7 +503,28 @@ export default function Home() {
                 </div>
               )}
 
-              {research && (
+              <div className="tabs-bar" role="tablist">
+                {TABS.map((t) => {
+                  const working = !t.ready && busy && nextTabWorking?.id === t.id;
+                  return (
+                    <button key={t.id} role="tab" aria-selected={tab === t.id} disabled={!t.ready}
+                      className={`tab ${tab === t.id ? "on" : ""} ${t.ready ? "ready" : ""} ${working ? "working" : ""}`}
+                      onClick={() => setTab(t.id)}>
+                      <span className="ti">{t.icon}</span>{t.label}
+                      <span className="tstate">{t.ready ? "✓" : working ? <span className="dot" /> : ""}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {!research && (
+                <div className="card empty">
+                  <div className="spin" />
+                  <div><b>The team is getting started.</b><div className="small muted">Research appears here first. Follow every handoff in the activity feed.</div></div>
+                </div>
+              )}
+
+              {tab === "research" && research && (
                 <div className="card">
                   <h2>🔎 Research</h2>
                   <p style={{ marginTop: 0 }}><b>{research.product_name}</b> — {research.product_summary}</p>
@@ -529,8 +575,8 @@ export default function Home() {
                 </div>
               )}
 
-              {strategy && (
-                <div className="card section">
+              {tab === "strategy" && strategy && (
+                <div className="card">
                   <h2>🧭 Strategy — what we test first</h2>
                   <p style={{ marginTop: 0 }}>{strategy.goal}</p>
                   <div className="tablewrap">
@@ -546,8 +592,8 @@ export default function Home() {
                 </div>
               )}
 
-              {ads && (
-                <div className="card section">
+              {tab === "ads" && ads && (
+                <div className="card">
                   <h2>✍️ Ads — 5 angles × 3 languages</h2>
                   {reviewCopy && (
                     <p className="small">
@@ -559,8 +605,8 @@ export default function Home() {
                 </div>
               )}
 
-              {channel && (
-                <div className="card section">
+              {tab === "plan" && channel && (
+                <div className="card">
                   <h2>📣 Channel plan</h2>
                   <div className="tablewrap">
                     <table>
@@ -574,7 +620,7 @@ export default function Home() {
                 </div>
               )}
 
-              {signoff && (
+              {tab === "plan" && signoff && (
                 <div className="card section">
                   <h2>🧭 Test plan — signed off</h2>
                   <div className="callout ok small">
@@ -593,9 +639,18 @@ export default function Home() {
                 </div>
               )}
 
-              {rounds.map((r) => <RoundView key={r.round} r={r} />)}
+              {tab === "plan" && channel && !signoff && busy && (
+                <div className="card section empty"><div className="spin" /><div className="small">Head of Growth is reviewing the plan…</div></div>
+              )}
 
-              {learnings.length > 0 && (
+              {tab === "results" && (
+                <div className="round-tabs">
+                  {rounds.map((r) => <span key={r.round} className="pill">Round {r.round}{r.analysis ? (r.analysis.winner ? ` · winner ${r.analysis.winner}` : " · no winner yet") : " · running"}</span>)}
+                </div>
+              )}
+              {tab === "results" && rounds.map((r, i) => <div key={r.round} className={i ? "section" : ""}><RoundView r={r} /></div>)}
+
+              {tab === "results" && learnings.length > 0 && (
                 <div className="card section">
                   <h2>🧠 Learnings log</h2>
                   <p className="small muted" style={{ marginTop: 0 }}>The team&apos;s memory. Every round adds to it, and the next round is built on it.</p>
@@ -603,12 +658,12 @@ export default function Home() {
                 </div>
               )}
 
-              {canNext && (
+              {tab === "results" && canNext && (
                 <div className="section">
                   <button className="primary big" onClick={() => runRound(rounds.length + 1)}>Run round {rounds.length + 1} with the new ads →</button>
                 </div>
               )}
-              {rounds.length > 0 && (
+              {tab === "results" && rounds.length > 0 && (
                 <div className="section">
                   <button className="ghost" onClick={() => { setPhase("start"); setPasteMode(false); setError(null); }} disabled={busy}>Start over with another product</button>
                 </div>

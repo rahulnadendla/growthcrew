@@ -50,10 +50,12 @@ async function assertPublicUrl(raw: string): Promise<URL> {
   return url;
 }
 
-function decode(s: string) {
-  return s
+function decode(s: string): string {
+  // Decode twice: some shops double-escape titles (e.g. "&amp;amp;").
+  const once = (x: string) => x
     .replace(/&nbsp;/g, " ").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
     .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#8377;|&#x20b9;/gi, "₹").replace(/&amp;/g, "&");
+  return once(once(s));
 }
 
 function htmlToText(html: string): { title: string; text: string } {

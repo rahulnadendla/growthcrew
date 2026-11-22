@@ -105,3 +105,22 @@ footer.note { margin-top: 30px; color: var(--muted); font-size: 12.5px; text-ali
   .row2 { grid-template-columns: 1fr; }
   h1 { font-size: 27px; }
 }
+
+/* ---- Tabs layout ---- */
+.tabs-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 6px; position: sticky; top: 8px; z-index: 5; box-shadow: 0 4px 14px rgba(20,22,27,.05); }
+.tabs-bar .tab { flex: 1 1 auto; display: flex; align-items: center; gap: 6px; justify-content: center; background: transparent; color: var(--muted); padding: 9px 10px; font-size: 13.5px; border-radius: 8px; white-space: nowrap; }
+.tabs-bar .tab:disabled { opacity: .45; cursor: default; }
+.tabs-bar .tab.ready { color: var(--ink); }
+.tabs-bar .tab.ready:hover { background: #f4f3ee; }
+.tabs-bar .tab.on { background: var(--ink); color: #fff; }
+.tabs-bar .tab.working { color: var(--brand); opacity: 1; }
+.tabs-bar .tab.working .dot { animation: pulse 1s infinite; }
+.tabs-bar .tstate { font-size: 12px; color: var(--ok); min-width: 10px; }
+.tabs-bar .tab.on .tstate { color: #9ee6b8; }
+.card.empty { display: flex; gap: 14px; align-items: center; }
+.spin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--brand-soft); border-top-color: var(--brand); animation: spin .8s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.round-tabs { margin-bottom: 8px; }
+.card { animation: fadein .25s ease; }
+@keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (max-width: 860px) { .tabs-bar { position: static; } .tabs-bar .tab { flex: 1 1 45%; } }
